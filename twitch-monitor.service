@@ -1,0 +1,21 @@
+[Unit]
+Description=Streamer Twitch status monitor
+Wants=network-online.target streamer-qq.service
+After=network-online.target streamer-qq.service
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/StreamerStatusMonitor
+ExecStart=/home/ubuntu/StreamerStatusMonitor/.venv/bin/python -u /home/ubuntu/StreamerStatusMonitor/twitch_monitor.py run
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

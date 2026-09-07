@@ -1,0 +1,10 @@
+{
+  "api_key": "",
+  "channels": [
+    {
+      "channel_id": "UC_CHANNEL_ID",
+      "name": "频道显示名称"
+    }
+  ],
+  "poll_seconds": 60
+}

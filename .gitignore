@@ -1,0 +1,16 @@
+.venv/
+work/
+data/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+.env
+*.pem
+*.secret
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

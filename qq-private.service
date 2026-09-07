@@ -1,0 +1,21 @@
+[Unit]
+Description=Streamer monitor QQ private notification probe
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/StreamerStatusMonitor
+ExecStart=/home/ubuntu/StreamerStatusMonitor/.venv/bin/python -u /home/ubuntu/StreamerStatusMonitor/qq_private.py listen
+Environment=PYTHONUNBUFFERED=1
+Restart=on-failure
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

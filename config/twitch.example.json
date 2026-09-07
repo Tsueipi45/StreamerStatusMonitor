@@ -1,0 +1,8 @@
+{
+  "client_id": "YOUR_TWITCH_CLIENT_ID",
+  "client_secret": "YOUR_TWITCH_CLIENT_SECRET",
+  "channels": [
+    "channel_login"
+  ],
+  "poll_seconds": 60
+}
