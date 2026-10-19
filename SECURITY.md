@@ -7,11 +7,12 @@
 - QQ AppSecret、用户 OpenID 和绑定状态
 - Twitch Client Secret 或访问令牌
 - YouTube API Key
+- DeepSeek API Key
 - SSH 私钥、`.env` 文件和运行日志
 
 项目的 `.gitignore` 已排除常见敏感文件，但这不能代替提交前检查。
 
-如果凭据曾经公开，请在对应平台撤销并重新生成。更新 QQ 凭据可运行 `python qq_private.py replace-credentials`；其他平台请更新 `data/` 中对应配置，并重启相关服务。
+如果凭据曾经公开，请在对应平台撤销并重新生成。更新 QQ 凭据可运行 `python qq_private.py replace-credentials`，更新 DeepSeek 密钥可运行 `python admissions_monitor.py set-key`；其他平台请更新 `data/` 中对应配置，并重启相关服务。
 
 ## 报告问题
 

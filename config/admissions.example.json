@@ -1,0 +1,5 @@
+{
+  "deepseek_api_key": "填入服务器本地，不要提交真实密钥",
+  "deepseek_model": "deepseek-chat",
+  "max_new_items": 5
+}

@@ -43,6 +43,12 @@ if [[ -f data/youtube.json ]]; then
   SERVICES+=(streamer-youtube.service)
 fi
 
+if [[ -f data/admissions.json ]]; then
+  install_service admissions-monitor.service streamer-admissions.service
+  install_service admissions-monitor.timer streamer-admissions.timer
+  SERVICES+=(streamer-admissions.timer)
+fi
+
 sudo systemctl daemon-reload
 sudo systemctl enable "${SERVICES[@]}"
 sudo systemctl restart "${SERVICES[@]}"

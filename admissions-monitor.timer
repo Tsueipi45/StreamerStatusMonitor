@@ -1,0 +1,11 @@
+[Unit]
+Description=Run admissions news monitor every morning
+
+[Timer]
+OnCalendar=*-*-* 09:00:00 Asia/Shanghai
+Persistent=true
+RandomizedDelaySec=3min
+Unit=streamer-admissions.service
+
+[Install]
+WantedBy=timers.target

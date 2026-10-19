@@ -1,0 +1,15 @@
+[Unit]
+Description=Daily admissions news monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/StreamerStatusMonitor
+ExecStart=/home/ubuntu/StreamerStatusMonitor/.venv/bin/python admissions_monitor.py check
+Restart=on-failure
+RestartSec=15min
+
+[Install]
+WantedBy=multi-user.target
