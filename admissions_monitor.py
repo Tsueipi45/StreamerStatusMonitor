@@ -118,10 +118,23 @@ def extract_articles(pages):
     return found
 
 
-def registration_status(text, today):
-    match = REGISTRATION_DATES.search(text)
+def filter_articles_for_year(articles, target_year):
+    marker = str(target_year)
+    return [item for item in articles if marker in clean_text(item.get("title"))]
+
+
+def registration_status(text, today, target_year=2027):
+    match = next(
+        (candidate for candidate in REGISTRATION_DATES.finditer(text)
+         if int(candidate.group(1)) == int(target_year)),
+        None,
+    )
     if not match:
-        return {"status": "unknown", "label": "无法确认", "period": "官网未识别到报名日期"}
+        return {
+            "status": "awaiting_announcement",
+            "label": "报名安排暂未公布",
+            "period": f"官方尚未发布 {target_year} 年报名日期",
+        }
     start_year, start_month, start_day, end_year, end_month, end_day = match.groups()
     start = date(int(start_year), int(start_month), int(start_day))
     end = date(int(end_year or start_year), int(end_month), int(end_day))
@@ -149,6 +162,7 @@ def initialize(replace=False):
         "deepseek_api_key": api_key,
         "deepseek_model": "deepseek-chat",
         "max_new_items": 5,
+        "target_year": 2027,
     })
     print("研招监控配置已保存。可运行：python admissions_monitor.py check")
 
@@ -160,6 +174,7 @@ def set_api_key():
         raise ValueError("DeepSeek API Key 不能为空。")
     config.setdefault("deepseek_model", "deepseek-chat")
     config.setdefault("max_new_items", 5)
+    config.setdefault("target_year", 2027)
     config["deepseek_api_key"] = api_key
     save_private(CONFIG_PATH, config)
     print("DeepSeek API Key 已更新。")
@@ -185,9 +200,10 @@ class DeepSeekClient:
         self.api_key = api_key
         self.model = model
 
-    async def summarize(self, today, registration, registration_text, articles):
+    async def summarize(self, today, target_year, registration, registration_text, articles):
         source_data = {
             "current_date_china": today.isoformat(),
+            "target_exam_year": target_year,
             "registration": {
                 **registration,
                 "official_url": REGISTRATION_URL,
@@ -203,6 +219,7 @@ class DeepSeekClient:
             "不得补充未提供的事实，不得改写网址。输出 JSON，结构为："
             '{"registration_summary":"一句话","overall_summary":"一句话",'
             '"items":[{"title":"标题","summary":"一到两句话","url":"原网址"}]}。'
+            f"本次只核查 {target_year} 年报名和考试资讯，不得提及其他年度的报名状态。"
             "报名状态以输入中的 status、period 为准。新资讯为空时 items 必须为空。"
         )
         response = await self.http.post(
@@ -235,13 +252,15 @@ class DeepSeekClient:
 
 class AdmissionsMonitor:
     def __init__(self, http, deepseek, notifier, owner, state_path=STATE_PATH,
-                 max_new_items=5, today=lambda: datetime.now(CHINA_TIME).date()):
+                 max_new_items=5, target_year=2027,
+                 today=lambda: datetime.now(CHINA_TIME).date()):
         self.http = http
         self.deepseek = deepseek
         self.notifier = notifier
         self.owner = owner
         self.state_path = state_path
         self.max_new_items = max(1, min(int(max_new_items), 10))
+        self.target_year = int(target_year)
         self.today = today
         self.state = read_json(state_path) if state_path.exists() else {}
 
@@ -265,7 +284,8 @@ class AdmissionsMonitor:
             raise RuntimeError("研招网资讯页面全部读取失败；" + "；".join(failures))
         if failures:
             LOG.warning("部分官方来源读取失败：%s", "；".join(failures))
-        return registration_page, extract_articles(news_pages)
+        articles = filter_articles_for_year(extract_articles(news_pages), self.target_year)
+        return registration_page, articles
 
     async def article_details(self, articles):
         results = await asyncio.gather(
@@ -283,10 +303,11 @@ class AdmissionsMonitor:
         return enriched
 
     @staticmethod
-    def fallback_summary(registration, articles):
+    def fallback_summary(target_year, registration, articles):
         return {
-            "registration_summary": f"港澳台研究生网上报名{registration['label']}，官网日期为 {registration['period']}。",
-            "overall_summary": "研招网没有发现新的资讯。" if not articles else f"研招网发现 {len(articles)} 条新资讯。",
+            "registration_summary": f"{target_year} 年港澳台研究生{registration['period']}。",
+            "overall_summary": (f"研招网没有发现新的 {target_year} 年考试资讯。"
+                                if not articles else f"研招网发现 {len(articles)} 条新的 {target_year} 年考试资讯。"),
             "items": [
                 {"title": item["title"], "summary": "请打开官方链接查看详情。", "url": item["url"]}
                 for item in articles
@@ -294,11 +315,11 @@ class AdmissionsMonitor:
         }
 
     @staticmethod
-    def format_message(today, registration, summary, articles):
+    def format_message(today, target_year, registration, summary, articles):
         lines = [
-            "📚 港澳台考研 / 研招日报",
+            f"📚 {target_year} 港澳台考研 / 研招日报",
             f"日期：{today.isoformat()}（北京时间）",
-            f"报名状态：{registration['label']}",
+            f"{target_year} 报名状态：{registration['label']}",
             summary.get("registration_summary") or f"官网报名期：{registration['period']}",
             "",
             summary.get("overall_summary") or (f"发现 {len(articles)} 条新资讯。" if articles else "今天没有发现新资讯。"),
@@ -322,23 +343,28 @@ class AdmissionsMonitor:
         seen = set(self.state.get("seen_urls", []))
         new_articles = [item for item in current_articles if item["url"] not in seen][:self.max_new_items]
         new_articles = await self.article_details(new_articles)
-        registration = registration_status(registration_page["text"], today)
+        registration = registration_status(registration_page["text"], today, self.target_year)
+        if registration["status"] == "awaiting_announcement":
+            registration_text = f"官方报名页面尚未发布 {self.target_year} 年报名日期。"
+        else:
+            registration_text = registration_page["text"]
         try:
             summary = await self.deepseek.summarize(
-                today, registration, registration_page["text"], new_articles,
+                today, self.target_year, registration, registration_text, new_articles,
             )
             ai_ok = True
         except Exception as exc:
             LOG.error("DeepSeek 整理失败，改发基础报告：%s", exc)
-            summary = self.fallback_summary(registration, new_articles)
+            summary = self.fallback_summary(self.target_year, registration, new_articles)
             ai_ok = False
-        message = self.format_message(today, registration, summary, new_articles)
+        message = self.format_message(today, self.target_year, registration, summary, new_articles)
         await self.notifier.send_text("c2c", self.owner, message, markdown=False, retries=1)
         all_seen = list(dict.fromkeys([item["url"] for item in current_articles] + list(seen)))[:1000]
         self.state.update({
             "seen_urls": all_seen,
             "last_checked_at": datetime.now(timezone.utc).isoformat(),
             "last_report_date": today.isoformat(),
+            "target_year": self.target_year,
             "last_registration_status": registration["status"],
             "registration_fingerprint": hashlib.sha256(registration_page["text"].encode()).hexdigest(),
         })
@@ -365,6 +391,7 @@ async def run_once():
         monitor = AdmissionsMonitor(
             http, deepseek, notifier, owner,
             max_new_items=config.get("max_new_items", 5),
+            target_year=config.get("target_year", 2027),
         )
         await monitor.run_once()
 

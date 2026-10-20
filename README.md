@@ -9,7 +9,7 @@
 | QQ 私聊 | 可用 | 一次性配对、访问控制、被动回复测试、主动通知测试 |
 | Twitch | 可用 | 批量查询频道状态，每场直播只提醒一次 |
 | YouTube | 可用 | 新影片、直播预约、正式开播分别提醒，首次启用不补发历史影片 |
-| 研招日报 | 可用 | 每天检查港澳台研究生报名官网和研招网，由 DeepSeek 整理后发送 |
+| 研招日报 | 可用 | 每天检查 2027 港澳台研究生报名和研招网考试资讯，由 DeepSeek 整理后发送 |
 | X | 尚未实现 | 计划监测指定账号的贴文与回复 |
 
 通知失败会按 1、5、15、60 分钟退避重试，查询失败不会覆盖上一次有效状态。所有密钥、QQ 绑定资料和去重状态都保存在本机 `data/`，该目录不会进入 Git。
@@ -85,7 +85,7 @@ cp config/youtube.example.json data/youtube.json
 
 ### 4. 配置研招日报
 
-监控器每天读取[面向港澳台研究生网上报名官网](https://www.gatzs.com.cn/z/gatyz/)以及[中国研究生招生信息网资讯页](https://yz.chsi.com.cn/kyzx/)。程序负责访问和比较官方页面，DeepSeek API 负责判断重点并整理摘要；DeepSeek 普通 API 本身不承担网页搜索。
+监控器每天读取[面向港澳台研究生网上报名官网](https://www.gatzs.com.cn/z/gatyz/)以及[中国研究生招生信息网资讯页](https://yz.chsi.com.cn/kyzx/)。当前默认只核查 2027 年报名和考试资讯；官网尚未发布 2027 报名日期时只报告“报名安排暂未公布”，不会播报其他年度已经结束。程序负责访问和比较官方页面，DeepSeek API 负责判断重点并整理摘要；DeepSeek 普通 API 本身不承担网页搜索。
 
 ```bash
 .venv/bin/python admissions_monitor.py init
